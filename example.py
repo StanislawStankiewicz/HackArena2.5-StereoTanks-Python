@@ -24,7 +24,7 @@ class ExampleBot(StereoTanksBot):
 
         self._print_map(game_state.map, my_tank, teammate_tank)
 
-        # Check if the my tank is dead
+        # Check if my tank is dead
         if my_tank is None:
             # Return pass to avoid warnings from the server
             # when the bot tries to make an action with a dead tank
