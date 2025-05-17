@@ -9,15 +9,6 @@ from hackathon_bot import *
 
 class BaseBot(StereoTanksBot):
 
-    penalties = GoTo.Penalties(
-        mine=35,
-        laser=80,
-        blindly=10,
-        per_tile=[
-            # GoTo.Penalties.PerTile(x=5, y=5, penalty=100),
-        ],
-    )
-
     def __init__(self):
         super().__init__()
         self.grid_dimension = None
@@ -32,31 +23,35 @@ class BaseBot(StereoTanksBot):
         self.y: int = None
         self.action_state: int = ActionState.GO_TO_ZONE
 
+        self.mine_tiles = []
+        self.penalties = GoTo.Penalties(
+        mine=100,
+        laser=10000,
+        blindly=10,
+        # per_tile=self.mine_tiles
+    )
+
     def on_lobby_data_received(self, lobby_data: LobbyData) -> None:
-        print(f"Lobby data received: {lobby_data}")
         is_light = self._is_light_tank(lobby_data)
-        print("is light:", is_light)
         self.grid_dimension = lobby_data.server_settings.grid_dimension
         self.teamname = self._get_team_name(lobby_data)
         if self._is_light_tank(lobby_data):
             from light_bot import LightBot
-            self.bot = LightBot(self.teamname)
+            self.bot = LightBot(self.teamname, self.grid_dimension)
         else:
             from heavy_bot import HeavyBot
-            self.bot = HeavyBot(self.teamname)
+            self.bot = HeavyBot(self.teamname, self.grid_dimension)
 
     def next_move(self, game_state: GameState) -> ResponseAction:
         my_tank = self._find_my_tank(game_state)
         if my_tank is None:
             return Pass()
-        print(self.teamname)
         self._update_state(game_state)
-        if self.is_enemy_in_clear_line_of_sight(game_state)[0]:
-            print("enemy in clear line of sight" + str(time.time()))
-        # self._print_map(game_state.map, my_tank, teammate_tank)
+        
         if self.bot:
             move = self.bot.next_move(game_state)
-            print("move: " + str(move))
+            if move is None:
+                raise ValueError("Move is None")
             return move
         return self._get_random_action()
 
@@ -188,7 +183,6 @@ class BaseBot(StereoTanksBot):
                 if isinstance(entity, Tank):
                     # Sprawdzanie czy to wróg
                     if self._is_tank_enemy(game_state, entity):
-                        print(x, y)
                         return True, distance_to_enemy
                     else:
                         # To sojusznik
@@ -226,43 +220,12 @@ class BaseBot(StereoTanksBot):
     def _get_random_action(self):
         return random.choice(
             [
-                Movement(MovementDirection.FORWARD),
-                Movement(MovementDirection.BACKWARD),
-                Rotation(RotationDirection.LEFT, RotationDirection.LEFT),
-                Rotation(RotationDirection.LEFT, RotationDirection.RIGHT),
-                Rotation(RotationDirection.LEFT, None),
-                Rotation(RotationDirection.RIGHT, RotationDirection.LEFT),
-                Rotation(RotationDirection.RIGHT, RotationDirection.RIGHT),
-                Rotation(RotationDirection.RIGHT, None),
-                Rotation(None, RotationDirection.LEFT),
-                Rotation(None, RotationDirection.RIGHT),
-                Rotation(None, None),  # Useless, better use Pass()
-                AbilityUse(Ability.FIRE_BULLET),
-                AbilityUse(Ability.FIRE_DOUBLE_BULLET),
-                AbilityUse(Ability.USE_LASER),
-                AbilityUse(Ability.USE_RADAR),
-                AbilityUse(Ability.DROP_MINE),
-                AbilityUse(Ability.FIRE_HEALING_BULLET),
-                AbilityUse(Ability.FIRE_STUN_BULLET),
-                CaptureZone(),
-                GoTo(
-                    random.randint(0, self.grid_dimension - 1),
-                    random.randint(0, self.grid_dimension - 1),
-                ),
                 GoTo(
                     random.randint(0, self.grid_dimension - 1),
                     random.randint(0, self.grid_dimension - 1),
                     costs=GoTo.Costs(forward=10, backward=1, rotate=1),
-                    penalties=GoTo.Penalties(
-                        mine=-5,
-                        laser=1,
-                        blindly=-1,
-                        per_tile=[
-                            GoTo.Penalties.PerTile(x=5, y=5, penalty=100),
-                        ],
-                    ),
+                    penalties = self.penalties,
                 ),
-                Pass(),
             ]
         )
 
@@ -310,6 +273,8 @@ class BaseBot(StereoTanksBot):
                     for entity in tile.entities:
                         if isinstance(entity, Tank) and (entity.owner_id != game_state.my_id or (self.teammate_tank is not None and entity.owner_id != self.teammate_tank.owner_id)):
                             return True
+
+
         return False
 
     def _is_my_tank_in_zone(self, game_state: GameState) -> bool:
@@ -331,7 +296,7 @@ class BaseBot(StereoTanksBot):
     def _is_zone_ours(self, game_state: GameState) -> bool:
         zone = self._find_zone(game_state)
         if self.teamname in zone.shares:
-            return zone.shares[self.teamname] > 0.98
+            return zone.shares[self.teamname] > 0.90
         else:
             return False
 
@@ -348,13 +313,11 @@ class BaseBot(StereoTanksBot):
     def _find_enemies(self, game_state: GameState) -> list[Tank]:
         """choose an enemy to attack"""
         enemies = []
-        print("searching for enemies")
         for row in game_state.map.tiles:
             for tile in row:
                 if tile.entities:
                     for entity in tile.entities:
                         if isinstance(entity, Tank) and self._is_tank_enemy(game_state, entity):
-                            print("enemy id", entity.owner_id)
                             enemies.append(entity)
 
         return enemies
