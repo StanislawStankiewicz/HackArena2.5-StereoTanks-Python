@@ -48,11 +48,11 @@ class BaseBot(StereoTanksBot):
         if my_tank is None:
             return Pass()
         self._update_state(game_state)
-        
+
         if self.bot:
             move = self.bot.next_move(game_state)
             if move is None:
-                raise ValueError("Move is None")
+                return self._get_random_action()
             return move
         return self._get_random_action()
 
@@ -289,7 +289,7 @@ class BaseBot(StereoTanksBot):
                             return True
         return False
 
-    def _goto_zone(self, game_state: GameState):
+    def _goto_zone(self, game_state: GameState, ofset=0):
         """go to the zone"""
         coords = self._get_zone_coordinates(game_state)[int(time.time()) % len(self._get_zone_coordinates(game_state))]
 

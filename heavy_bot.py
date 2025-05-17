@@ -75,7 +75,7 @@ class HeavyBot(BaseBot):
                         and not self.tick % 10 < 2
                 ):
                     self.action_state = ActionState.CAPTURING
-                return self._goto_zone(game_state)
+                return self._goto_zone(game_state, 10)
 
 
             if self.action_state == ActionState.CAPTURING:
@@ -104,7 +104,7 @@ class HeavyBot(BaseBot):
                         else:
                             return ret
         self.action_state = ActionState.GO_TO_ZONE
-        return self._goto_zone(game_state)
+        return self._goto_zone(game_state, 10)
 
     def _get_random_strafe(self, game_state):
         """Move to the nearest corner relative to the enemy position"""
