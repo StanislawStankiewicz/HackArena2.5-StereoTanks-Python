@@ -1,3 +1,4 @@
+import datetime
 import time
 import random
 
@@ -207,12 +208,13 @@ class BaseBot(StereoTanksBot):
         x, y = self.x + dx, self.y + dy
         while 0 <= x < len(game_state.map.tiles[0]) and 0 <= y < len(game_state.map.tiles):
             tile = game_state.map.tiles[y][x]
+            teammate_tank = self._find_teammate_tank(game_state)
             if tile.entities:
                 entity = tile.entities[0]
                 if isinstance(entity, Wall) and Wall.type == WallType.SOLID:
                     return False
-                if isinstance(entity, Tank):
-                    return entity.owner_id == self.teammate_tank.owner_id
+                if teammate_tank != None and isinstance(entity, Tank) :
+                    return entity.owner_id == teammate_tank.owner_id
             x += dx
             y += dy
         return False
@@ -289,7 +291,7 @@ class BaseBot(StereoTanksBot):
 
     def _goto_zone(self, game_state: GameState):
         """go to the zone"""
-        coords = random.choice(self._get_zone_coordinates(game_state))
+        coords = self._get_zone_coordinates(game_state)[int(time.time()) % len(self._get_zone_coordinates(game_state))]
 
         return GoTo(coords[0], coords[1], penalties=self.penalties)
 

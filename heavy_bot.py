@@ -48,6 +48,10 @@ class HeavyBot(BaseBot):
         self._update_cds()
         self._update_state(game_state)
 
+        if self.is_teammate_in_clear_line_of_sight(game_state) and self.heal_cd == 0:
+            self.heal_cd = 50
+            return AbilityUse(Ability.FIRE_HEALING_BULLET)
+
         for _ in range(10):
             if self.lux_protocol:
                 self.lux_protocol = False
@@ -148,8 +152,6 @@ class HeavyBot(BaseBot):
         elif self.bullet_count > 0:
             return True
         return False
-
-
 
     def _is_mine_suitable(self, game_state) -> bool:
         """Returns True if the current tank position is in a corridor in the hull direction."""
